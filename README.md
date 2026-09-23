@@ -128,9 +128,20 @@ python -m streamlit run dashboard/demo_runner.py
 In the browser:
 - Select a failure scenario (e.g. *Heat Dissipation Failure*, *Power Failure*, or *Overstrain Failure*).
 - Click **Run Stream** to simulate real-time IoT feeds.
-- Watch live gauge movements, dynamic trendlines, and immediate Maintenance Work Order dispatch.
+- Watch live gauge movements, dynamic trendlines, native **TreeSHAP feature contribution charts**, and immediate Maintenance Work Order dispatch.
 
-### Step 5: Power BI Desktop Reporting
+### Step 5: Launch Production REST API Microservice
+```bash
+uvicorn src.api:app --reload --port 8000
+```
+- Interactive OpenAPI / Swagger UI: `http://localhost:8000/docs`
+- Endpoints:
+  - `POST /predict`: Ingest real-time telemetry, get calibrated failure probability, Anomaly Score, TreeSHAP feature attributions, and maintenance work orders.
+  - `GET /health`: Microservice health status.
+  - `GET /fleet/status`: Current equipment fleet health snapshot.
+  - `GET /alerts/recent`: Active work order queue.
+
+### Step 6: Power BI Desktop Reporting
 Follow the step-by-step instructions in [`dashboard/powerbi_guide.md`](file:///d:/Predict_Failure/dashboard/powerbi_guide.md) to load the three exported CSV files into Power BI Desktop.
 
 ---
@@ -153,6 +164,9 @@ The agent analyzes physical failure signatures and prescribes concrete technicia
 
 ```text
 d:/Predict_Failure/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    # Automated GitHub Actions CI pipeline
 ├── data/
 │   ├── raw/
 │   │   ├── ai4i2020.csv              # Primary benchmark dataset (10,000 cycles)
@@ -170,16 +184,17 @@ d:/Predict_Failure/
 │   └── failure_model.pkl             # Trained Microsoft LightGBM model
 ├── src/
 │   ├── __init__.py
+│   ├── api.py                        # FastAPI production microservice
 │   ├── config.py                     # Physical limits, risk cutoffs, parameters
 │   ├── data_processing.py            # Ingestion, validation, timestamp synthesis
 │   ├── feature_engineering.py        # Rolling temporal stats & physics metrics
 │   ├── anomaly_detection.py          # Isolation Forest anomaly scoring
-│   ├── failure_prediction.py         # Microsoft LightGBM classifier & calibration
+│   ├── failure_prediction.py         # Microsoft LightGBM classifier & TreeSHAP
 │   ├── agent.py                      # Autonomous triage & work order generation
 │   ├── alert_engine.py               # Ticket queuing, deduplication, and export
 │   └── sensor_simulator.py           # Software sensor stream replay harness
 ├── dashboard/
-│   ├── demo_runner.py                # Streamlit live simulation demo UI
+│   ├── demo_runner.py                # Streamlit live simulation demo UI with SHAP
 │   ├── powerbi_export_helper.py      # Power BI formatting utility
 │   └── powerbi_guide.md              # Power BI setup and visual design guide
 ├── tests/

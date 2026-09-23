@@ -188,9 +188,10 @@ def main():
         m_risk = metric_col4.empty()
 
         # Telemetry Chart Placeholders
-        chart_col1, chart_col2 = st.columns(2)
+        chart_col1, chart_col2, chart_col3 = st.columns([1, 1, 1])
         chart_temp = chart_col1.empty()
         chart_speed = chart_col2.empty()
+        chart_shap = chart_col3.empty()
 
         # Agent Alert Box Placeholder
         agent_box = st.empty()
@@ -209,6 +210,7 @@ def main():
                 feats_df = pd.DataFrame([row])[ALL_MODEL_FEATURES]
                 anom_score_pct, _ = anomaly_detector.predict_anomaly_score(feats_df)
                 fail_prob_pct, _ = failure_predictor.predict_probability(feats_df)
+                shap_factors = failure_predictor.get_prediction_shap_contributions(feats_df, top_k=5)[0]
 
                 row["anomaly_score_pct"] = float(anom_score_pct[0])
                 row["failure_probability_pct"] = float(fail_prob_pct[0])
@@ -219,8 +221,8 @@ def main():
                 row["health_score"] = health
                 row["risk_tier"] = risk
 
-                # Agent Triage
-                ticket = agent.evaluate_reading(row)
+                # Agent Triage with SHAP root causes
+                ticket = agent.evaluate_reading(row, shap_factors=shap_factors)
                 if ticket:
                     st.session_state.active_tickets.append(ticket)
 
@@ -256,9 +258,13 @@ def main():
                         hist_df.set_index("udi")[["rotational_speed_rpm", "torque_nm"]],
                         height=250,
                     )
+                    # SHAP Contribution Bar Chart
+                    shap_df = pd.DataFrame(shap_factors, columns=["Feature", "Contribution"]).set_index("Feature")
+                    chart_shap.bar_chart(shap_df, height=250)
 
                 # Render Agent Work Order if Alert Triggered
                 if ticket:
+                    shap_tag = f"<p><b>TreeSHAP Contributors:</b> <code>{ticket.top_contributing_factors}</code></p>" if ticket.top_contributing_factors else ""
                     agent_box.markdown(
                         f"""
                         <div class="alert-box">
@@ -266,6 +272,7 @@ def main():
                             <p><b>Equipment Asset:</b> {ticket.equipment_id} ({ticket.product_type}-Type) | <b>Urgency:</b> {ticket.urgency_level}</p>
                             <p><b>Diagnosed Failure Mode:</b> <span style="color:#f87171; font-weight:700;">{ticket.diagnosed_failure_mode}</span></p>
                             <p><b>Root Cause Analysis:</b> {ticket.root_cause_explanation}</p>
+                            {shap_tag}
                             <p><b>Prescriptive Action:</b> <span style="color:#fbbf24; font-weight:600;">{ticket.recommended_action}</span></p>
                         </div>
                         """,
@@ -308,8 +315,13 @@ def main():
                 height=250,
             )
 
+            latest_feats = pd.DataFrame([latest])[ALL_MODEL_FEATURES]
+            latest_shap = failure_predictor.get_prediction_shap_contributions(latest_feats, top_k=5)[0]
+            chart_shap.bar_chart(pd.DataFrame(latest_shap, columns=["Feature", "Contribution"]).set_index("Feature"), height=250)
+
             if st.session_state.active_tickets:
                 last_ticket = st.session_state.active_tickets[-1]
+                shap_tag = f"<p><b>TreeSHAP Contributors:</b> <code>{last_ticket.top_contributing_factors}</code></p>" if last_ticket.top_contributing_factors else ""
                 agent_box.markdown(
                     f"""
                     <div class="alert-box">
@@ -317,6 +329,7 @@ def main():
                         <p><b>Equipment Asset:</b> {last_ticket.equipment_id} ({last_ticket.product_type}-Type) | <b>Urgency:</b> {last_ticket.urgency_level}</p>
                         <p><b>Diagnosed Failure Mode:</b> <span style="color:#f87171; font-weight:700;">{last_ticket.diagnosed_failure_mode}</span></p>
                         <p><b>Root Cause Analysis:</b> {last_ticket.root_cause_explanation}</p>
+                        {shap_tag}
                         <p><b>Prescriptive Action:</b> <span style="color:#fbbf24; font-weight:600;">{last_ticket.recommended_action}</span></p>
                     </div>
                     """,

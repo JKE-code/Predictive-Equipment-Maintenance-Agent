@@ -90,6 +90,33 @@ class FailurePredictor:
         failure_probability_pct = probas * 100.0
         return failure_probability_pct, preds
 
+    def get_prediction_shap_contributions(
+        self,
+        X: pd.DataFrame,
+        top_k: int = 5,
+    ) -> List[List[Tuple[str, float]]]:
+        """
+        Compute native Microsoft LightGBM TreeSHAP feature contributions for each sample.
+        Returns top_k (feature, contribution_val) tuples driving the prediction.
+        """
+        if not self.is_fitted:
+            raise RuntimeError("Model must be fitted to compute SHAP contributions.")
+
+        # pred_contrib=True returns [N_samples, N_features + 1]
+        raw_contribs = self.model.predict(X[self.features], pred_contrib=True)
+        results: List[List[Tuple[str, float]]] = []
+
+        for row_idx in range(len(X)):
+            feat_contribs = raw_contribs[row_idx, :-1]  # Exclude base bias value at -1
+            ranked = sorted(
+                zip(self.features, feat_contribs),
+                key=lambda item: abs(item[1]),
+                reverse=True,
+            )
+            results.append([(k, round(float(v), 4)) for k, v in ranked[:top_k]])
+
+        return results
+
     def get_feature_importances(self) -> pd.DataFrame:
         """Return feature importance ranking for root-cause diagnosis."""
         if not self.is_fitted:

@@ -127,3 +127,52 @@ def test_predictive_maintenance_agent_triage():
     assert isinstance(ticket, MaintenanceTicket)
     assert "HDF" in ticket.diagnosed_failure_mode
     assert "radiator" in ticket.recommended_action.lower()
+
+
+def test_native_treeshap_contributions():
+    """Verify Microsoft LightGBM native TreeSHAP computes feature attributions."""
+    np.random.seed(42)
+    data = {feat: np.random.normal(loc=50.0, scale=5.0, size=50) for feat in ALL_MODEL_FEATURES}
+    df = pd.DataFrame(data)
+    y = np.random.choice([0, 1], size=50, p=[0.8, 0.2])
+
+    predictor = FailurePredictor()
+    predictor.fit(df, y)
+
+    shap_res = predictor.get_prediction_shap_contributions(df.head(5), top_k=3)
+    assert len(shap_res) == 5
+    assert len(shap_res[0]) == 3
+    # Check that each contribution has (feature_name, float_val)
+    feat_name, val = shap_res[0][0]
+    assert feat_name in ALL_MODEL_FEATURES
+    assert isinstance(val, float)
+
+
+def test_fastapi_endpoints():
+    """Verify FastAPI microservice /health and /predict endpoints."""
+    from fastapi.testclient import TestClient
+    from src.api import app
+
+    with TestClient(app) as client:
+        # Test /health
+        res_health = client.get("/health")
+        assert res_health.status_code == 200
+        assert res_health.json()["status"] == "healthy"
+
+        # Test /predict
+        payload = {
+            "product_id": "M14860",
+            "product_type": "M",
+            "air_temp_k": 298.1,
+            "process_temp_k": 308.6,
+            "rotational_speed_rpm": 1551.0,
+            "torque_nm": 42.8,
+            "tool_wear_min": 10.0,
+        }
+        res_predict = client.post("/predict", json=payload)
+        assert res_predict.status_code == 200
+        body = res_predict.json()
+        assert "health_score" in body
+        assert "failure_probability_pct" in body
+        assert "top_contributing_factors" in body
+        assert len(body["top_contributing_factors"]) > 0

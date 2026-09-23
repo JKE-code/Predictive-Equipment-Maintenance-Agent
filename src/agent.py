@@ -34,6 +34,7 @@ class MaintenanceTicket:
     root_cause_explanation: str
     recommended_action: str
     urgency_level: str
+    top_contributing_factors: str = ""
 
 
 class PredictiveMaintenanceAgent:
@@ -127,7 +128,11 @@ class PredictiveMaintenanceAgent:
             "LOW-MEDIUM (Routine preventive inspection)",
         )
 
-    def evaluate_reading(self, row: pd.Series) -> Optional[MaintenanceTicket]:
+    def evaluate_reading(
+        self,
+        row: pd.Series,
+        shap_factors: Optional[List[tuple]] = None,
+    ) -> Optional[MaintenanceTicket]:
         """
         Evaluate a single telemetry point.
         If risk tier is WATCH, WARNING, or CRITICAL, generates a formal MaintenanceTicket.
@@ -147,6 +152,10 @@ class PredictiveMaintenanceAgent:
 
         mode, explanation, action, urgency = self.diagnose_root_cause(row)
 
+        formatted_shap = ""
+        if shap_factors:
+            formatted_shap = ", ".join([f"{k} ({'+' if v >= 0 else ''}{v:.2f})" for k, v in shap_factors])
+
         ticket = MaintenanceTicket(
             ticket_id=f"TICK-{self.ticket_counter:05d}",
             timestamp=timestamp,
@@ -160,6 +169,7 @@ class PredictiveMaintenanceAgent:
             root_cause_explanation=explanation,
             recommended_action=action,
             urgency_level=urgency,
+            top_contributing_factors=formatted_shap,
         )
         return ticket
 

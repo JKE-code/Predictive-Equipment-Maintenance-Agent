@@ -27,6 +27,8 @@ from src.config import (
 )
 from src.failure_prediction import FailurePredictor
 from src.sensor_simulator import prepare_simulation_scenarios
+import streamlit.components.v1 as components
+from dashboard.components.digital_twin_3d import generate_digital_twin_html
 
 # Streamlit Page Config
 st.set_page_config(
@@ -199,20 +201,33 @@ def main():
             st.error("Scenario file not found. Run `python main.py` to generate simulation sets.")
             st.stop()
 
-        # Metrics Row Placeholders
-        metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
-        m_health = metric_col1.empty()
-        m_prob = metric_col2.empty()
-        m_anom = metric_col3.empty()
-        m_risk = metric_col4.empty()
+        # Section 1: Split Screen - 3D Digital Twin (Left) & Real-Time Intelligence (Right)
+        col_twin, col_kpis = st.columns([1.15, 0.85])
 
-        # Telemetry Chart Placeholders
-        chart_col1, chart_col2, chart_col3 = st.columns([1, 1, 1])
+        with col_twin:
+            st.markdown("##### 🌐 Interactive 3D Machine Spindle Digital Twin")
+            twin_placeholder = st.empty()
+
+        with col_kpis:
+            # 2x2 grid for Top KPI Cards
+            kpi_r1_c1, kpi_r1_c2 = st.columns(2)
+            m_health = kpi_r1_c1.empty()
+            m_prob = kpi_r1_c2.empty()
+
+            kpi_r2_c1, kpi_r2_c2 = st.columns(2)
+            m_anom = kpi_r2_c1.empty()
+            m_risk = kpi_r2_c2.empty()
+
+            st.markdown("##### 🔬 TreeSHAP Real-Time Sensor Impact")
+            chart_shap = st.empty()
+
+        # Section 2: Full-width Telemetry Trends
+        st.markdown("##### 📈 High-Frequency Telemetry Strip Charts")
+        chart_col1, chart_col2 = st.columns(2)
         chart_temp = chart_col1.empty()
         chart_speed = chart_col2.empty()
-        chart_shap = chart_col3.empty()
 
-        # Agent Alert Box Placeholder
+        # Section 3: Autonomous Agent Work Order
         agent_box = st.empty()
 
         # Simulation Loop
@@ -294,6 +309,19 @@ def main():
                     unsafe_allow_html=True,
                 )
 
+                # Render 3D Digital Twin with real-time telemetry
+                twin_html = generate_digital_twin_html(
+                    speed_rpm=float(row.get("rotational_speed_rpm", 1500)),
+                    temp_k=float(row.get("process_temp_k", 308)),
+                    torque_nm=float(row.get("torque_nm", 40)),
+                    anomaly_score=float(displayed_anom),
+                    failure_mode=ticket.diagnosed_failure_mode if ticket else "NORMAL",
+                    is_failed=st.session_state.latched_failure,
+                    height=420,
+                )
+                with twin_placeholder:
+                    components.html(twin_html, height=430)
+
                 # Update Live Charts
                 if len(hist_df) > 1:
                     chart_temp.line_chart(
@@ -306,7 +334,7 @@ def main():
                     )
                     # SHAP Contribution Bar Chart
                     shap_df = pd.DataFrame(shap_factors, columns=["Feature", "Contribution"]).set_index("Feature")
-                    chart_shap.bar_chart(shap_df, height=250)
+                    chart_shap.bar_chart(shap_df, height=220)
 
                 # Render Agent Work Order if Alert Triggered
                 if ticket:
@@ -351,6 +379,20 @@ def main():
                 unsafe_allow_html=True,
             )
 
+            # Render 3D Twin in paused state
+            last_mode = st.session_state.active_tickets[-1].diagnosed_failure_mode if st.session_state.active_tickets else "NORMAL"
+            paused_twin_html = generate_digital_twin_html(
+                speed_rpm=float(latest.get("rotational_speed_rpm", 1500)),
+                temp_k=float(latest.get("process_temp_k", 308)),
+                torque_nm=float(latest.get("torque_nm", 40)),
+                anomaly_score=float(latest.get("anomaly_score_pct", 15)),
+                failure_mode=last_mode,
+                is_failed=st.session_state.latched_failure,
+                height=420,
+            )
+            with twin_placeholder:
+                components.html(paused_twin_html, height=430)
+
             hist_df = pd.DataFrame(st.session_state.history)
             chart_temp.line_chart(
                 hist_df.set_index("udi")[["process_temp_k", "air_temp_k"]],
@@ -363,7 +405,7 @@ def main():
 
             latest_feats = pd.DataFrame([latest])[ALL_MODEL_FEATURES]
             latest_shap = failure_predictor.get_prediction_shap_contributions(latest_feats, top_k=5)[0]
-            chart_shap.bar_chart(pd.DataFrame(latest_shap, columns=["Feature", "Contribution"]).set_index("Feature"), height=250)
+            chart_shap.bar_chart(pd.DataFrame(latest_shap, columns=["Feature", "Contribution"]).set_index("Feature"), height=220)
 
             if st.session_state.active_tickets:
                 last_ticket = st.session_state.active_tickets[-1]
@@ -382,7 +424,7 @@ def main():
                     unsafe_allow_html=True,
                 )
         else:
-            # Initial prompt
+            # Initial prompt & Ready State
             m_health.markdown(
                 '<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value status-normal">100.0%</div><div>Ready</div></div>',
                 unsafe_allow_html=True,
@@ -399,6 +441,20 @@ def main():
                 '<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value status-normal">NORMAL</div><div>Ready</div></div>',
                 unsafe_allow_html=True,
             )
+
+            # Initial 3D Digital Twin idling
+            ready_twin_html = generate_digital_twin_html(
+                speed_rpm=1450.0,
+                temp_k=308.0,
+                torque_nm=40.0,
+                anomaly_score=10.0,
+                failure_mode="NORMAL",
+                is_failed=False,
+                height=420,
+            )
+            with twin_placeholder:
+                components.html(ready_twin_html, height=430)
+
             st.info("👈 Press **Run Stream** in the sidebar to simulate live IoT telemetry and witness real-time failure prediction and autonomous agent response.")
 
     with tab2:

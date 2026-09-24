@@ -985,12 +985,38 @@ def main():
             else:
                 def_type, def_speed, def_torque, def_air, def_proc, def_wear = "M", 1520.0, 41.5, 298.2, 308.6, 50.0
 
-            sb_type = st.selectbox("Product Quality Variant", ["L (Light Duty)", "M (Medium Duty)", "H (Heavy Duty)"], index=["L", "M", "H"].index(def_type))
-            sb_speed = st.slider("Rotational Spindle Speed (RPM)", 1100.0, 2800.0, def_speed, 10.0)
-            sb_torque = st.slider("Cutting Torque (Nm)", 10.0, 80.0, def_torque, 0.5)
-            sb_proc = st.slider("Process Temperature (Kelvin)", 300.0, 325.0, def_proc, 0.2)
-            sb_air = st.slider("Ambient Air Temperature (Kelvin)", 295.0, 312.0, def_air, 0.2)
-            sb_wear = st.slider("Cumulative Tool Wear (minutes)", 0.0, 260.0, def_wear, 1.0)
+            # Initialize slider state if needed
+            if "sb_speed_val" not in st.session_state:
+                st.session_state.sb_speed_val = 1520.0
+                st.session_state.sb_torque_val = 41.5
+                st.session_state.sb_proc_val = 308.6
+                st.session_state.sb_air_val = 298.2
+                st.session_state.sb_wear_val = 50.0
+                st.session_state.sb_type_idx = 1
+                st.session_state.last_preset_choice = preset
+
+            # Detect preset switch and automatically reposition the sliders
+            if preset != st.session_state.last_preset_choice:
+                st.session_state.last_preset_choice = preset
+                if preset != "Custom Manual Adjustments":
+                    st.session_state.sb_speed_val = def_speed
+                    st.session_state.sb_torque_val = def_torque
+                    st.session_state.sb_proc_val = def_proc
+                    st.session_state.sb_air_val = def_air
+                    st.session_state.sb_wear_val = def_wear
+                    st.session_state.sb_type_idx = ["L", "M", "H"].index(def_type)
+                    st.rerun()
+
+            sb_type = st.selectbox(
+                "Product Quality Variant",
+                ["L (Light Duty)", "M (Medium Duty)", "H (Heavy Duty)"],
+                index=st.session_state.sb_type_idx,
+            )
+            sb_speed = st.slider("Rotational Spindle Speed (RPM)", 1100.0, 2800.0, st.session_state.sb_speed_val, 10.0)
+            sb_torque = st.slider("Cutting Torque (Nm)", 10.0, 80.0, st.session_state.sb_torque_val, 0.5)
+            sb_proc = st.slider("Process Temperature (Kelvin)", 300.0, 325.0, st.session_state.sb_proc_val, 0.2)
+            sb_air = st.slider("Ambient Air Temperature (Kelvin)", 295.0, 312.0, st.session_state.sb_air_val, 0.2)
+            sb_wear = st.slider("Cumulative Tool Wear (minutes)", 0.0, 260.0, st.session_state.sb_wear_val, 1.0)
 
             # Physics calculations
             calc_diff = sb_proc - sb_air

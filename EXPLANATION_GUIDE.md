@@ -95,10 +95,16 @@ Follow this exact sequence while sharing your screen on `http://localhost:8501`:
   * Show the **Autonomous Dispatch Ticket** that pops up with root cause and prescriptive action: *"Inspect drive motor inverter and spindle electrical connections."*
 
 #### 2. Click Tab 4: 🧪 What-If Diagnostic Sandbox (1:00 – 1:45)
-* *"Now, judges, what if an engineer wants to test an arbitrary cutting condition without waiting for a stream?"*
+* *"Now, judges, what if a plant engineer wants to test an arbitrary cutting condition without waiting for a historical stream?"*
 * Select the preset **"Heat Dissipation Danger (ΔT < 8.6 K, 1330 RPM)"**.
-* Show how the sliders automatically reposition, the physical calculation confirms $\Delta T = 8.00\text{ K}$, and the AI instantly predicts $99.5\%$ failure risk, diagnosing **Heat Dissipation Failure (HDF)** and prescribing a coolant flush.
-* Tweak the speed slider back up to $1800\text{ RPM}$ — show the health index recover immediately to $90\%+$ in real time!
+* **Observe the Auto-Repositioning:** Note how the sliders instantly snap to the preset values (Speed drops to 1330 RPM, Process Temp climbs to 311.5 K).
+* **Observe the 3D Digital Twin Emergency Trip:** 
+  * Because failure probability exceeds 75% and thermal runaway is detected, **the 3D spindle automatically halts rotation (Emergency Trip)**.
+  * The holographic warning ring turns bright red and begins pulsing.
+  * The housing fins glow deep orange/red to indicate heat dissipation choking.
+* Now drag the Spindle Speed slider back up to **1800 RPM**:
+  * Watch the 3D spindle instantly **resume spinning in nominal cyan**.
+  * The Equipment Health Index immediately recovers to **90%+** in real time!
 
 #### 3. Click Tab 2: 🏭 Fleet Overview (1:45 – 2:15)
 * *"In a real factory, we don't monitor just one machine; we monitor the entire plant."*
@@ -280,33 +286,35 @@ Both the **Streamlit Dashboard** and the **FastAPI Microservice** load these ser
 
 You can deploy this project live to the web with **zero hosting costs and zero credit card requirements**:
 
-### Option 1: Streamlit Community Cloud (Recommended — 2 Minutes)
+### Option 1: Streamlit Community Cloud (Recommended — 100% Free Forever)
 * **What it does:** Hosts your interactive 3D WebGL Dashboard on a public `https://...streamlit.app` URL for free forever.
-* **Cost:** 100% Free.
+* **Cost:** 100% Free (Hosted by Snowflake/Streamlit with zero credit card).
 * **Deployment Steps:**
-  1. Your code and trained models are already pushed to your public GitHub repo: `https://github.com/JKE-code/Predictive-Equipment-Maintenance-Agent.git`.
+  1. Your code, entrypoint (`app.py`), and trained models are already committed and pushed to your public GitHub repo: `https://github.com/JKE-code/Predictive-Equipment-Maintenance-Agent.git`.
   2. Visit [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
   3. Click **"New App"**.
   4. Select repository: `JKE-code/Predictive-Equipment-Maintenance-Agent`.
   5. Select branch: `main`.
-  6. Main file path: `dashboard/demo_runner.py`.
+  6. Main file path: `app.py`.
   7. Click **"Deploy!"**
   8. Within 2 minutes, your live 3D Digital Twin and Fleet Command Center will be running publicly!
 
-### Option 2: Hugging Face Spaces (Free Docker Hosting)
-* **What it does:** Free 2 vCPU + 16 GB RAM container deployment.
-* **Cost:** 100% Free.
+### Option 2: Render.com (100% Free Web Service for FastAPI or Streamlit)
+* **What it does:** Hosts either the FastAPI REST microservice (`src/api.py`) or Streamlit app with a public HTTPS URL.
+* **Cost:** 100% Free (750 free instance hours per month, no credit card required).
 * **Deployment Steps:**
-  1. Go to [huggingface.co/spaces](https://huggingface.co/spaces) and click **"Create new Space"**.
-  2. Select SDK: **Docker** (using the [`Dockerfile`](file:///d:/Predict_Failure/Dockerfile) we already created in the repo).
+  1. Sign up at [render.com](https://render.com) (Free plan).
+  2. Click **New +** $\to$ **Web Service**.
   3. Connect your GitHub repository.
-  4. Hugging Face will automatically build and host the application.
+  4. Build Command: `pip install -r requirements.txt`
+  5. Start Command: `streamlit run app.py --server.port $PORT --server.address 0.0.0.0` (or `uvicorn src.api:app --host 0.0.0.0 --port $PORT`)
+  6. Click **Create Web Service**.
 
-### Option 3: Render.com (Free FastAPI Backend Hosting)
-* **What it does:** Hosts the FastAPI REST microservice (`src/api.py`) with automatic OpenAPI docs.
-* **Cost:** 100% Free (750 free instance hours per month).
-* **Build Command:** `pip install -r requirements.txt`
-* **Start Command:** `uvicorn src.api:app --host 0.0.0.0 --port $PORT`
+### Option 3: Localhost Presentation (100% Reliable Offline Fallback)
+* The system is already running locally on:
+  * **Streamlit 3D Dashboard:** `http://localhost:8501`
+  * **FastAPI Microservice:** `http://localhost:8000` (Docs: `http://localhost:8000/docs`)
+* Zero internet dependencies, zero cloud latency, and 100% reliability during live judge evaluation.
 
 ---
 

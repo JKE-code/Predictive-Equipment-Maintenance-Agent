@@ -156,24 +156,127 @@ The project includes an automated exporter (`dashboard/powerbi_export_helper.py`
      * `powerbi_alerts_queue.csv`
    * Click **Load**.
 3. **Set Up Data Model Relationships:**
-   * Click the **Model View** icon on the left sidebar.
-   * Drag `product_id` from `powerbi_fleet_overview` to `product_id` in `powerbi_sensor_trends` (One-to-Many).
-   * Drag `product_id` from `powerbi_fleet_overview` to `equipment_id` in `powerbi_alerts_queue` (One-to-Many).
-4. **Add Pre-Calculated DAX Measures (Optional but impressive):**
-   * *Fleet Health Index:*  
-     `Fleet Health = AVERAGE(powerbi_fleet_overview[health_score])`
-   * *Critical Machine Count:*  
-     `Critical Count = CALCULATE(COUNTROWS(powerbi_fleet_overview), powerbi_fleet_overview[risk_tier] = "CRITICAL")`
-   * *Availability Rate %:*  
-     `Availability Rate = DIVIDE(CALCULATE(COUNTROWS(powerbi_fleet_overview), powerbi_fleet_overview[risk_tier] IN {"NORMAL", "WATCH"}), COUNTROWS(powerbi_fleet_overview)) * 100`
-5. **Build Recommended 3-Page Report:**
-   * **Page 1: Executive Fleet Health:** Card visuals for *Fleet Health* & *Critical Count*; Donut chart for `risk_tier` breakdown; Bar chart of average health by `product_type`.
-   * **Page 2: Physical Sensor Surveillance:** Line charts for `process_temp_k` vs `air_temp_k` across `timestamp`; Scatter plot of `rotational_speed_rpm` vs `torque_nm` colored by `risk_tier`.
-   * **Page 3: Work Order Operations:** Table visual showing `ticket_id`, `equipment_id`, `urgency_level`, `diagnosed_failure_mode`, and `recommended_action`.
+   * Click the **Model View** icon on the left sidebar (the diagram icon with connected boxes).
+   * Drag `product_id` from `powerbi_fleet_overview` $\to$ `product_id` in `powerbi_sensor_trends` (One-to-Many relationship).
+   * Drag `product_id` from `powerbi_fleet_overview` $\to$ `equipment_id` in `powerbi_alerts_queue` (One-to-Many relationship).
 
 ---
 
-## 5. 100% Free Cloud Deployment Options
+### Exactly How to Create DAX Measures (Click-by-Click Guide)
+
+In Microsoft Power BI Desktop, a **DAX Measure** is a dynamic calculation that updates automatically based on slicers and filters.
+
+#### Step 1: Open the Formula Bar
+1. On the right-hand side of Power BI Desktop, locate the **Data** pane (or **Fields** pane in older versions).
+2. Right-click on the table `powerbi_fleet_overview`.
+3. In the pop-up menu, select **New measure** (alternatively, click on the **Modeling** or **Table tools** tab in the top ribbon and click the **New measure** button).
+4. A formula bar will appear across the top with `Measure = `.
+
+#### Step 2: Paste the DAX Formulas
+Copy and paste each formula below into the formula bar and press **Enter** (or click the checkmark $\checkmark$):
+
+1. **Fleet Average Health Index:**
+   ```dax
+   Fleet Health = AVERAGE(powerbi_fleet_overview[health_score])
+   ```
+   *Format:* In the top ribbon under **Measure tools**, set Format to **Decimal number** with **1** decimal place.
+
+2. **Critical Machine Count:**
+   ```dax
+   Critical Count = CALCULATE(COUNTROWS(powerbi_fleet_overview), powerbi_fleet_overview[risk_tier] = "CRITICAL")
+   ```
+   *Format:* Set Format to **Whole number**.
+
+3. **Fleet Operational Availability Rate:**
+   ```dax
+   Availability Rate = 
+   DIVIDE(
+       CALCULATE(COUNTROWS(powerbi_fleet_overview), powerbi_fleet_overview[risk_tier] IN {"NORMAL", "WATCH"}),
+       COUNTROWS(powerbi_fleet_overview),
+       0
+   )
+   ```
+   *Format:* Click the **%** button in the top ribbon to format as Percentage with 1 decimal.
+
+4. **Emergency Immediate Halt Tickets:**
+   ```dax
+   Immediate Halts = 
+   CALCULATE(
+       COUNTROWS(powerbi_alerts_queue), 
+       CONTAINSSTRING(powerbi_alerts_queue[urgency_level], "IMMEDIATE")
+   )
+   ```
+
+#### Step 3: Put the Measure on Your Dashboard Canvas
+1. In the **Visualizations** pane (right side), click on the **Card** visual icon (looks like a box with `1 2 3`).
+2. A blank card visual will appear on your canvas.
+3. In the **Data** pane, find the measure you just created (e.g. `Fleet Health` with a small calculator icon next to it).
+4. Drag and drop `Fleet Health` into the **Fields / Value** well of the Card visual.
+5. The card will instantly display the calculated KPI (e.g., `69.3%`) with dynamic responsiveness!
+
+---
+
+## 5. Machine Learning Model Architecture & Deployment Strategy
+
+You have two complementary machine learning models in this project:
+1. **Model 1: Scikit-Learn Isolation Forest** (`models/anomaly_model.pkl` - 1.2 MB)
+2. **Model 2: Microsoft LightGBM Classifier** (`models/failure_model.pkl` - 324 KB)
+
+### How the Models are Deployed & Executed
+
+```text
+┌────────────────────────────────────────────────────────────────────────────┐
+│                             INCOMING TELEMETRY                             │
+│                  (Raw Sensor Reading from Stream or API)                   │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                         STEP 1: FEATURE EXTRACTION                         │
+│  Computes ΔT, Shaft Power (W), Strain Index, Rolling 15-step Means & Stds  │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+                   ┌──────────────────┴──────────────────┐
+                   ▼                                     ▼
+┌─────────────────────────────────────┐ ┌────────────────────────────────────┐
+│      MODEL 1: ISOLATION FOREST      │ │      MODEL 2: MICROSOFT LIGHTGBM   │
+│   (models/anomaly_model.pkl)        │ │       (models/failure_model.pkl)   │
+│ • Unsupervised multivariate scoring │ │ • Supervised binary classifier     │
+│ • Compares sample against 9,661     │ │ • Dynamic tree splits with         │
+│   nominal operating baselines       │ │   is_unbalance=True weighting      │
+│ • Calibrates raw isolation score    │ │ • predict_proba() outputs exact    │
+│   to 0.0% – 100.0% Anomaly Index    │ │   0.0% – 100.0% Failure Risk       │
+└──────────────────┬──────────────────┘ └─────────────────┬──────────────────┘
+                   │                                      │
+                   │                                      ▼
+                   │                    ┌────────────────────────────────────┐
+                   │                    │     NATIVE C++ TREESHAP ENGINE     │
+                   │                    │ model.predict(X, pred_contrib=True)│
+                   │                    │ Computes exact feature drivers in  │
+                   │                    │ less than 1 millisecond (< 1ms)    │
+                   │                    └─────────────────┬──────────────────┘
+                   │                                      │
+                   └──────────────────┬───────────────────┘
+                                      │
+                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                 STEP 3: AUTONOMOUS AGENT RISK EVALUATION                   │
+│   Composite Health: H = 100.0 - (0.70 * Failure_Prob + 0.30 * Anomaly)     │
+│   Categorizes: HDF, PWF, OSF, TWF, Drift | Issues Work Order Ticket        │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### In-Memory Caching & Serving Architecture
+
+Both the **Streamlit Dashboard** and the **FastAPI Microservice** load these serialized models into RAM on server boot:
+* **In Streamlit (`dashboard/demo_runner.py`):**
+  Decorated with `@st.cache_resource def load_models()`. This ensures the models are loaded into memory **once** on container startup. Subsequent stream updates and slider adjustments evaluate in **< 5 milliseconds** directly from RAM without disk I/O.
+* **In FastAPI (`src/api.py`):**
+  Decorated with `asynccontextmanager lifespan`. When uvicorn starts the server, the lifespan hook instantiates both models in global memory. The `POST /predict` endpoint executes sub-20ms HTTP request-response cycles.
+
+---
+
+## 6. 100% Free Cloud Deployment Options
 
 You can deploy this project live to the web with **zero hosting costs and zero credit card requirements**:
 
@@ -181,7 +284,7 @@ You can deploy this project live to the web with **zero hosting costs and zero c
 * **What it does:** Hosts your interactive 3D WebGL Dashboard on a public `https://...streamlit.app` URL for free forever.
 * **Cost:** 100% Free.
 * **Deployment Steps:**
-  1. Your code is already pushed to your public GitHub repo: `https://github.com/JKE-code/Predictive-Equipment-Maintenance-Agent.git`.
+  1. Your code and trained models are already pushed to your public GitHub repo: `https://github.com/JKE-code/Predictive-Equipment-Maintenance-Agent.git`.
   2. Visit [share.streamlit.io](https://share.streamlit.io/) and sign in with GitHub.
   3. Click **"New App"**.
   4. Select repository: `JKE-code/Predictive-Equipment-Maintenance-Agent`.

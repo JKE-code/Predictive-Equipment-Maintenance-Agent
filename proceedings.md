@@ -18,7 +18,11 @@
 | **5. Failure probability score** | `predict_proba()` calibration | **COMPLETED** | Native calibrated probability $P(\text{failure}) \in [0.0\%, 100.0\%]$. |
 | **6. Maintenance alert generation** | [`src/agent.py`](file:///d:/Predict_Failure/src/agent.py), [`src/alert_engine.py`](file:///d:/Predict_Failure/src/alert_engine.py) | **COMPLETED** | Autonomous triage across 5 physical modes (HDF, PWF, OSF, TWF, Drift); generated 5,280 prioritized tickets. |
 | **7. Sensor trend visualization** | [`dashboard/powerbi_export_helper.py`](file:///d:/Predict_Failure/dashboard/powerbi_export_helper.py), [`dashboard/demo_runner.py`](file:///d:/Predict_Failure/dashboard/demo_runner.py) | **COMPLETED** | Exported 3 Power BI tables; built Streamlit live streaming replay simulator with real-time gauges. |
-| **Automated Test Suite** | [`tests/test_pipeline.py`](file:///d:/Predict_Failure/tests/test_pipeline.py) | **COMPLETED** | 5/5 unit & integration tests passing in 2.15s. |
+| **8. Native TreeSHAP Engine** | [`src/failure_prediction.py`](file:///d:/Predict_Failure/src/failure_prediction.py) | **COMPLETED** | C++ TreeSHAP fast feature attribution in live stream & API. |
+| **9. FastAPI Microservice** | [`src/api.py`](file:///d:/Predict_Failure/src/api.py) | **COMPLETED** | Production REST API on port 8000 with `/predict`, `/fleet/status`, `/alerts/recent`, `/health`. |
+| **10. 3D WebGL Digital Twin** | [`dashboard/components/digital_twin_3d.py`](file:///d:/Predict_Failure/dashboard/components/digital_twin_3d.py) | **COMPLETED** | Three.js interactive 3D spindle responding live to RPM, thermal glow, and failure states. |
+| **11. Fleet Command & Dispatch UI** | [`dashboard/demo_runner.py`](file:///d:/Predict_Failure/dashboard/demo_runner.py) | **COMPLETED** | Executive Fleet KPIs, Asset directory, Work Order Dispatch cards with action buttons. |
+| **Automated Test Suite** | [`tests/test_pipeline.py`](file:///d:/Predict_Failure/tests/test_pipeline.py) | **COMPLETED** | 7/7 unit & integration tests passing in 2.5s. |
 
 ---
 

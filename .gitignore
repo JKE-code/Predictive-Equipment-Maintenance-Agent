@@ -16,7 +16,7 @@ venv/
 ENV/
 
 # Streamlit & Web
-.streamlit/
+.streamlit/secrets.toml
 
 # IDE & Editor artifacts
 .vscode/

@@ -7,6 +7,7 @@ Fleet-wide asset intelligence, and autonomous maintenance work order dispatching
 from pathlib import Path
 import sys
 import time
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -368,8 +369,13 @@ def main():
         st.session_state.sim_running = True
 
     # Main Tabs
-    tab1, tab2, tab3 = st.tabs(
-        ["📊 Live Telemetry & Digital Twin", "🏭 Fleet Overview", "📋 Maintenance Dispatch Queue"]
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "📊 Live Telemetry & Digital Twin",
+            "🏭 Fleet Overview",
+            "📋 Maintenance Dispatch Queue",
+            "🧪 What-If Diagnostic Sandbox",
+        ]
     )
 
     # ==========================================
@@ -934,6 +940,159 @@ def main():
                 st.dataframe(filtered_alerts, use_container_width=True, height=350)
         else:
             st.info("No persistent alerts log found. Run `python main.py` to generate alert log.")
+
+    # ==========================================
+    # TAB 4: WHAT-IF DIAGNOSTIC SANDBOX
+    # ==========================================
+    with tab4:
+        st.markdown(
+            """
+            <div class="info-banner">
+                🧪 <b>Interactive What-If Diagnostic Sandbox:</b> Manually configure operational parameters and sensor inputs to evaluate how the <b>Isolation Forest</b>, <b>LightGBM Classifier</b>, and <b>Autonomous Triage Agent</b> respond in real time.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        col_sb_left, col_sb_right = st.columns([1, 1.15])
+
+        with col_sb_left:
+            st.markdown("##### 🎛️ Diagnostic Presets & Sensor Controls")
+            preset = st.selectbox(
+                "Quick Diagnostic Presets",
+                [
+                    "Custom Manual Adjustments",
+                    "Healthy Operational Baseline (1500 RPM, 40 Nm, ΔT=10.5 K)",
+                    "Heat Dissipation Danger (ΔT < 8.6 K, 1330 RPM)",
+                    "Motor Power Surge (Power > 9,000 W)",
+                    "Severe Overstrain (Tool wear × Torque > 11,000)",
+                    "Tool Wear Flank Breakdown (Wear > 220 min)",
+                ],
+                index=0,
+            )
+
+            # Default values based on preset
+            if preset.startswith("Healthy"):
+                def_type, def_speed, def_torque, def_air, def_proc, def_wear = "M", 1500.0, 40.0, 298.0, 308.5, 30.0
+            elif preset.startswith("Heat"):
+                def_type, def_speed, def_torque, def_air, def_proc, def_wear = "L", 1330.0, 42.0, 303.5, 311.5, 45.0
+            elif preset.startswith("Motor"):
+                def_type, def_speed, def_torque, def_air, def_proc, def_wear = "L", 1580.0, 65.0, 298.5, 309.0, 35.0
+            elif preset.startswith("Severe"):
+                def_type, def_speed, def_torque, def_air, def_proc, def_wear = "L", 1420.0, 62.0, 298.5, 309.2, 195.0
+            elif preset.startswith("Tool"):
+                def_type, def_speed, def_torque, def_air, def_proc, def_wear = "M", 1490.0, 46.0, 298.2, 308.8, 235.0
+            else:
+                def_type, def_speed, def_torque, def_air, def_proc, def_wear = "M", 1520.0, 41.5, 298.2, 308.6, 50.0
+
+            sb_type = st.selectbox("Product Quality Variant", ["L (Light Duty)", "M (Medium Duty)", "H (Heavy Duty)"], index=["L", "M", "H"].index(def_type))
+            sb_speed = st.slider("Rotational Spindle Speed (RPM)", 1100.0, 2800.0, def_speed, 10.0)
+            sb_torque = st.slider("Cutting Torque (Nm)", 10.0, 80.0, def_torque, 0.5)
+            sb_proc = st.slider("Process Temperature (Kelvin)", 300.0, 325.0, def_proc, 0.2)
+            sb_air = st.slider("Ambient Air Temperature (Kelvin)", 295.0, 312.0, def_air, 0.2)
+            sb_wear = st.slider("Cumulative Tool Wear (minutes)", 0.0, 260.0, def_wear, 1.0)
+
+            # Physics calculations
+            calc_diff = sb_proc - sb_air
+            calc_power = (2 * np.pi * sb_speed / 60.0) * sb_torque
+            calc_strain = sb_wear * sb_torque
+
+            diff_status = "🚨 CRITICAL (< 8.6 K)" if calc_diff < 8.6 and sb_speed < 1380 else "✓ Nominal"
+            power_status = "🚨 EXCEEDED (> 9,000 W)" if calc_power > 9000 else "✓ Safe Envelope"
+            strain_status = "🚨 OVERSTRAIN" if calc_strain > 11000 and sb_type[0] == 'L' else "✓ Safe Load"
+
+            st.markdown(
+                f"""
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; margin-top:10px; font-size:0.83rem; line-height:1.6;">
+                    <b>Calculated Real-Time Physical Indicators:</b><br>
+                    • Thermal Differential (ΔT): <b>{calc_diff:.2f} K</b> ({diff_status})<br>
+                    • Shaft Mechanical Power: <b>{calc_power:.1f} W</b> ({power_status})<br>
+                    • Mechanical Strain Index: <b>{calc_strain:.0f}</b> ({strain_status})
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col_sb_right:
+            st.markdown("##### 🤖 Real-Time AI Diagnosis & 3D Spindle")
+
+            # Form single-row DataFrame and compute engineered features
+            sb_row_dict = {
+                "udi": 99999,
+                "product_id": f"{sb_type[0]}9999",
+                "product_type": sb_type[0],
+                "air_temp_k": sb_air,
+                "process_temp_k": sb_proc,
+                "rotational_speed_rpm": sb_speed,
+                "torque_nm": sb_torque,
+                "tool_wear_min": sb_wear,
+                "temp_diff_k": calc_diff,
+                "power_watts": calc_power,
+                "strain_index": calc_strain,
+                "rolling_mean_process_temp_15": sb_proc,
+                "rolling_std_process_temp_15": 0.2,
+                "rolling_mean_speed_15": sb_speed,
+                "rolling_std_speed_15": 5.0,
+                "rolling_mean_torque_15": sb_torque,
+                "rolling_std_torque_15": 1.2,
+                "torque_slope_5": 0.0,
+                "temp_slope_5": 0.0,
+            }
+            sb_feats_df = pd.DataFrame([sb_row_dict])[ALL_MODEL_FEATURES]
+
+            sb_anom_pct, _ = anomaly_detector.predict_anomaly_score(sb_feats_df)
+            sb_fail_pct, sb_pred = failure_predictor.predict_probability(sb_feats_df)
+            sb_shap = failure_predictor.get_prediction_shap_contributions(sb_feats_df, top_k=5)[0]
+
+            sb_health, sb_risk = agent.compute_health_and_risk(float(sb_fail_pct[0]), float(sb_anom_pct[0]))
+            sb_row_series = pd.Series(sb_row_dict)
+            sb_row_series["failure_probability_pct"] = float(sb_fail_pct[0])
+            sb_row_series["anomaly_score_pct"] = float(sb_anom_pct[0])
+            sb_row_series["health_score"] = sb_health
+            sb_row_series["risk_tier"] = sb_risk
+
+            sb_ticket = agent.evaluate_reading(sb_row_series, shap_factors=sb_shap)
+            is_trip = sb_risk == "CRITICAL" or sb_fail_pct[0] > 75.0 or (sb_ticket and "IMMEDIATE" in sb_ticket.urgency_level)
+
+            # 4 KPI cards
+            k_c1, k_c2, k_c3, k_c4 = st.columns(4)
+            k_cls = get_risk_color_class(sb_risk)
+            k_c1.markdown(f'<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value {k_cls}">{sb_health:.1f}%</div></div>', unsafe_allow_html=True)
+            k_c2.markdown(f'<div class="metric-card"><div class="metric-label">Failure Prob</div><div class="metric-value {k_cls}">{sb_fail_pct[0]:.1f}%</div></div>', unsafe_allow_html=True)
+            k_c3.markdown(f'<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">{sb_anom_pct[0]:.1f}%</div></div>', unsafe_allow_html=True)
+            k_c4.markdown(f'<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value {k_cls}">{sb_risk}</div></div>', unsafe_allow_html=True)
+
+            # 3D Twin for sandbox
+            sb_twin_html = generate_digital_twin_html(
+                speed_rpm=float(sb_speed),
+                temp_k=float(sb_proc),
+                torque_nm=float(sb_torque),
+                anomaly_score=float(sb_anom_pct[0]),
+                failure_mode=sb_ticket.diagnosed_failure_mode if sb_ticket else "NORMAL",
+                is_failed=is_trip,
+                height=320,
+            )
+            components.html(sb_twin_html, height=330)
+
+            # SHAP Bar Chart
+            st.markdown("<p style='font-size:0.85rem; color:#94a3b8; margin-top:8px;'>TREESHAP FEATURE IMPACT BREAKDOWN</p>", unsafe_allow_html=True)
+            sb_shap_df = pd.DataFrame(sb_shap, columns=["Feature", "Impact"]).set_index("Feature")
+            st.bar_chart(sb_shap_df, height=180)
+
+            # Work Order Box if alert
+            if sb_ticket:
+                sb_alert_cls = "alert-box" if "IMMEDIATE" in sb_ticket.urgency_level else "alert-box-warning"
+                st.markdown(
+                    f"""
+                    <div class="{sb_alert_cls}">
+                        <div class="ticket-header">🚨 WHAT-IF SIMULATED DISPATCH TICKET — [{sb_ticket.ticket_id}]</div>
+                        <p><b>Diagnosed Subsystem:</b> <span style="color:#f87171; font-weight:700;">{sb_ticket.diagnosed_failure_mode}</span> | <b>Urgency:</b> {sb_ticket.urgency_level}</p>
+                        <p><b>Root Cause:</b> {sb_ticket.root_cause_explanation}</p>
+                        <p><b>Prescriptive Protocol:</b> <span style="color:#fbbf24; font-weight:600;">{sb_ticket.recommended_action}</span></p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
 
 if __name__ == "__main__":

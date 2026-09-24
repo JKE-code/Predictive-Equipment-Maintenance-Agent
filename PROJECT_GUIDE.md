@@ -258,9 +258,38 @@ Access the web interface at **`http://localhost:8501`**.
 * **Urgency & Failure Mode Filters**: Filter work orders by urgency or specific failure mechanisms.
 * **Work Order Cards**: Detailed cards with severity badges, diagnosed subsystem, root-cause explanation, prescriptive protocol, and an interactive **"⚡ Dispatch Crew"** button.
 
+### Tab 4: 🧪 What-If Diagnostic Sandbox
+* **Interactive Parameter Controls**:
+  * Adjust Spindle Speed ($1100 - 2800\text{ RPM}$), Torque ($10 - 80\text{ Nm}$), Process & Air Temperatures ($295 - 325\text{ K}$), and Tool Wear ($0 - 260\text{ min}$).
+* **One-Click Diagnostic Presets**:
+  * Quickly simulate Healthy Baseline, Heat Dissipation Danger, Motor Power Surge, Severe Overstrain, or Tool Wear Flank Breakdown.
+* **Instant Physics & AI Evaluation**:
+  * Real-time calculation of $\Delta T$, Shaft Power, and Strain Index.
+  * Real-time 3D Spindle rotation, color transition, and failure tripping.
+  * TreeSHAP feature attribution breakdown bar chart and autonomous simulated dispatch ticket.
+
 ---
 
-## 6. How to Run and Verify the Project
+## 6. Microsoft Power BI Desktop Integration Guide
+
+To demonstrate enterprise Microsoft ecosystem compatibility, the pipeline exports 3 relational CSV tables in `data/processed/`:
+
+1. **`powerbi_fleet_overview.csv`**: Equipment inventory of all 10,000 machines, quality variant, current health score, failure probability, and operating parameters.
+2. **`powerbi_sensor_trends.csv`**: Time-series sensor logs with calculated physics metrics ($\Delta T$, power, strain) for strip charts and anomaly scatter plots.
+3. **`powerbi_alerts_queue.csv`**: Prioritized maintenance dispatch tickets with root cause explanations and prescriptive actions.
+
+### Quick Setup in Microsoft Power BI Desktop:
+1. Open **Microsoft Power BI Desktop** (Free).
+2. Click **Get Data** $\to$ **Text/CSV**, and select the 3 CSV files from `data/processed/`.
+3. In the **Model View**, link the tables via `product_id` (One-to-Many relationship from `powerbi_fleet_overview` to `powerbi_sensor_trends` and `powerbi_alerts_queue`).
+4. Recommended Visualizations:
+   * **Page 1 (Fleet Executive Summary):** Card visuals for Average Health Index & Active Alerts; Donut chart for Risk Tier distribution; Treemap for Product Variant breakdown.
+   * **Page 2 (Condition Monitoring):** Line charts for Temperature Differential vs Process Temp; Scatter plot of RPM vs Torque colored by Failure Mode.
+   * **Page 3 (Maintenance Operations):** Table visual of High & Immediate Urgency Tickets with Root Cause explanations.
+
+---
+
+## 7. How to Run and Verify the Project
 
 ### Running Automated Test Suite:
 ```powershell

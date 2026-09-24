@@ -1,6 +1,7 @@
 """
 Streamlit Live Interactive Demonstration UI: Predictive Equipment Maintenance Agent.
-Simulates real-time sensor streaming, live gauges, sensor trend charts, and autonomous agent triage.
+Simulates real-time sensor streaming, 3D WebGL Digital Twin, TreeSHAP explainability,
+Fleet-wide asset intelligence, and autonomous maintenance work order dispatching.
 """
 
 from pathlib import Path
@@ -32,57 +33,179 @@ from dashboard.components.digital_twin_3d import generate_digital_twin_html
 
 # Streamlit Page Config
 st.set_page_config(
-    page_title="AI Predictive Maintenance Agent",
+    page_title="AI Predictive Equipment Maintenance Agent",
     page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS for Sleek Dark Glassmorphism Styling
+# Custom High-End Industrial Dark Styling
 st.markdown(
     """
     <style>
-    .main {
-        background-color: #0b0f19;
+    /* Dark Base Layout */
+    .stApp {
+        background-color: #070b14 !important;
+        color: #e2e8f0 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+    header[data-testid="stHeader"] {
+        background-color: #070b14 !important;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #0b1120 !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Metric Glassmorphic Cards */
     .metric-card {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.5));
+        border: 1px solid rgba(56, 189, 248, 0.18);
         border-radius: 12px;
         padding: 16px;
         text-align: center;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+        transition: transform 0.2s ease, border-color 0.2s ease;
+        margin-bottom: 12px;
+    }
+    .metric-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(56, 189, 248, 0.4);
     }
     .metric-value {
-        font-size: 2.2rem;
-        font-weight: 700;
+        font-size: 2.1rem;
+        font-weight: 800;
         margin: 4px 0;
+        letter-spacing: -0.5px;
     }
     .metric-label {
-        font-size: 0.85rem;
+        font-size: 0.76rem;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
         color: #94a3b8;
+        font-weight: 600;
     }
-    .status-normal { color: #10b981; }
-    .status-watch { color: #38bdf8; }
-    .status-warning { color: #f59e0b; }
-    .status-critical { color: #ef4444; }
+    .metric-sub {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
 
+    /* Status Colors */
+    .status-normal { color: #10b981 !important; }
+    .status-watch { color: #38bdf8 !important; }
+    .status-warning { color: #f59e0b !important; }
+    .status-critical { color: #ef4444 !important; }
+
+    /* Scenario Brief Card in Sidebar */
+    .scenario-brief-card {
+        background: rgba(15, 23, 42, 0.9);
+        border-left: 3px solid #38bdf8;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0 16px 0;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        color: #cbd5e1;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Live Agent Work Order Alert Box */
     .alert-box {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
-        border-left: 4px solid #ef4444;
-        border-radius: 8px;
-        padding: 16px;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(15, 23, 42, 0.9));
+        border-left: 5px solid #ef4444;
+        border-radius: 10px;
+        padding: 18px;
         margin: 16px 0;
-        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.1);
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.15);
+    }
+    .alert-box-warning {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(15, 23, 42, 0.9));
+        border-left: 5px solid #f59e0b;
+        border-radius: 10px;
+        padding: 18px;
+        margin: 16px 0;
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.15);
     }
     .ticket-header {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         font-weight: 700;
         color: #f87171;
         margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    /* Work Order Card */
+    .work-order-card {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(10, 15, 28, 0.95));
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+    }
+    .wo-critical { border-left: 5px solid #ef4444; }
+    .wo-high { border-left: 5px solid #f59e0b; }
+    .wo-medium { border-left: 5px solid #38bdf8; }
+    .wo-routine { border-left: 5px solid #64748b; }
+
+    /* Badge Pills */
+    .badge-pill {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 9999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-right: 6px;
+    }
+    .badge-critical { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-high { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-medium { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .badge-routine { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.4); }
+    .badge-type { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+
+    /* Asset Directory Card */
+    .asset-card {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(10, 15, 28, 0.85));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .asset-title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .asset-metric-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 0.82rem;
+        color: #94a3b8;
+    }
+    .asset-metric-val {
+        color: #e2e8f0;
+        font-weight: 600;
+    }
+
+    /* Explanation Banner */
+    .info-banner {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.7));
+        border: 1px solid rgba(56, 189, 248, 0.2);
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+        color: #cbd5e1;
+        line-height: 1.5;
     }
     </style>
     """,
@@ -105,6 +228,7 @@ def get_risk_color_class(risk_tier: str) -> str:
         "WATCH": "status-watch",
         "WARNING": "status-warning",
         "CRITICAL": "status-critical",
+        "CRITICAL (TRIPPED)": "status-critical",
     }
     return mapping.get(risk_tier, "status-normal")
 
@@ -112,7 +236,7 @@ def get_risk_color_class(risk_tier: str) -> str:
 def main():
     st.title("⚙️ AI-Powered Predictive Equipment Maintenance Agent")
     st.caption(
-        "Microsoft LightGBM + Isolation Forest Telemetry Intelligence | 100% Free Local Stack"
+        "Microsoft LightGBM + Isolation Forest Telemetry Intelligence | 100% Free Local Stack | Port 8000 & 8501"
     )
 
     # Check if models exist
@@ -122,26 +246,79 @@ def main():
 
     anomaly_detector, failure_predictor, agent = load_models()
 
-    # Sidebar: Scenario Selection & Controls
-    st.sidebar.header("🕹️ Live Stream Controls")
-
+    # Scenario Definitions with Detailed Physical Briefs
     scenarios = {
-        "Heat Dissipation Failure (HDF)": SIMULATION_DIR / "scenario_hdf.csv",
-        "Power Failure (PWF)": SIMULATION_DIR / "scenario_pwf.csv",
-        "Overstrain Failure (OSF)": SIMULATION_DIR / "scenario_osf.csv",
-        "Normal Operation Baseline": SIMULATION_DIR / "scenario_normal.csv",
+        "Heat Dissipation Failure (HDF)": {
+            "path": SIMULATION_DIR / "scenario_hdf.csv",
+            "asset": "Asset L47181 (Light-Duty CNC Mill)",
+            "physics": "Thermal gradient ΔT collapses below 8.6 K and Spindle RPM decelerates below 1380 RPM.",
+            "progression": "Steps 1-6: Nominal operation -> Steps 7-13: Coolant degradation onset -> Steps 14-20: Thermal runaway trip.",
+        },
+        "Power Failure (PWF)": {
+            "path": SIMULATION_DIR / "scenario_pwf.csv",
+            "asset": "Asset L47190 (High-Speed Lathe)",
+            "physics": "Shaft Power (P = ω·τ) surges past safe motor envelope (> 9,000 Watts) via severe torque oscillation.",
+            "progression": "Steps 1-6: Nominal (5.9 kW) -> Steps 7-13: Torque surges (48-68 Nm) -> Steps 14-20: Drive motor overcurrent trip (10.9 kW).",
+        },
+        "Overstrain Failure (OSF)": {
+            "path": SIMULATION_DIR / "scenario_osf.csv",
+            "asset": "Asset L47205 (High-Feed Machining Center)",
+            "physics": "Overstrain index (Tool wear × Torque) exceeds critical threshold (> 11,000 for L-Type machine).",
+            "progression": "Steps 1-6: Worn tool baseline (170 min) -> Steps 7-13: Heavy cut engagement (Torque > 60 Nm) -> Steps 14-20: Mechanical fracture risk.",
+        },
+        "Tool Wear Failure (TWF)": {
+            "path": SIMULATION_DIR / "scenario_twf.csv",
+            "asset": "Asset M14910 (Precision Finishing Mill)",
+            "physics": "Tool wear exceeds safe boundary (200 - 240 minutes) causing cutting chatter and micro-flank breakdown.",
+            "progression": "Steps 1-6: Advanced wear (185 min) -> Steps 7-13: Flank wear acceleration -> Steps 14-20: 240 min limit breached.",
+        },
+        "Normal Operation Baseline": {
+            "path": SIMULATION_DIR / "scenario_normal.csv",
+            "asset": "Asset M14860 (Medium-Duty Spindle)",
+            "physics": "Nominal thermal equilibrium (ΔT: 10.2 K), stable torque (40 Nm), nominal speed (1500 RPM).",
+            "progression": "Steps 1-20: Smooth steady-state cutting. Zero alerts or mechanical anomalies.",
+        },
     }
 
     # Verify scenario files exist or prepare them
     if not (SIMULATION_DIR / "scenario_hdf.csv").exists():
-        if TELEMETRY_DATA_PATH.exists():
-            df_tel = pd.read_csv(TELEMETRY_DATA_PATH)
-            prepare_simulation_scenarios(df_tel)
+        prepare_simulation_scenarios()
+
+    # Sidebar: Scenario Selection & Controls
+    st.sidebar.header("🕹️ Live Stream Controls")
 
     selected_scenario_name = st.sidebar.selectbox(
         "Select Simulation Scenario", list(scenarios.keys()), index=0
     )
-    selected_scenario_path = scenarios[selected_scenario_name]
+    scenario_info = scenarios[selected_scenario_name]
+    selected_scenario_path = scenario_info["path"]
+
+    # Auto-Reset Logic: Detect scenario switch and reset stream state immediately
+    if "active_scenario" not in st.session_state:
+        st.session_state.active_scenario = selected_scenario_name
+    elif st.session_state.active_scenario != selected_scenario_name:
+        st.session_state.sim_running = False
+        st.session_state.current_step = 0
+        st.session_state.history = []
+        st.session_state.active_tickets = []
+        st.session_state.latched_failure = False
+        st.session_state.ema_health = 100.0
+        st.session_state.ema_prob = 0.0
+        st.session_state.ema_anom = 0.0
+        st.session_state.active_scenario = selected_scenario_name
+        st.rerun()
+
+    # Sidebar Scenario Briefing Card
+    st.sidebar.markdown(
+        f"""
+        <div class="scenario-brief-card">
+            <b>Target Asset:</b> {scenario_info["asset"]}<br>
+            <b>Physical Mode:</b> {scenario_info["physics"]}<br>
+            <b>Timeline:</b> {scenario_info["progression"]}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     sim_speed = st.sidebar.slider("Replay Interval (seconds)", 0.1, 1.5, 0.4, 0.1)
 
@@ -152,7 +329,7 @@ def main():
         help="Industrial EMA applies exponential temporal smoothing to filter workpiece noise, reflecting realistic machine health degradation.",
     )
 
-    # Session State Tracking
+    # Session State Initialization
     if "sim_running" not in st.session_state:
         st.session_state.sim_running = False
     if "current_step" not in st.session_state:
@@ -169,6 +346,8 @@ def main():
         st.session_state.ema_prob = 0.0
     if "ema_anom" not in st.session_state:
         st.session_state.ema_anom = 0.0
+    if "dispatched_tickets" not in st.session_state:
+        st.session_state.dispatched_tickets = set()
 
     col_btn1, col_btn2 = st.sidebar.columns(2)
     start_clicked = col_btn1.button("▶️ Run Stream", use_container_width=True)
@@ -190,22 +369,24 @@ def main():
 
     # Main Tabs
     tab1, tab2, tab3 = st.tabs(
-        ["📊 Live Telemetry & Agent", "🏭 Fleet Overview", "📋 Maintenance Alerts Queue"]
+        ["📊 Live Telemetry & Digital Twin", "🏭 Fleet Overview", "📋 Maintenance Dispatch Queue"]
     )
 
+    # ==========================================
+    # TAB 1: LIVE TELEMETRY & DIGITAL TWIN
+    # ==========================================
     with tab1:
-        # Load Scenario Data
         if selected_scenario_path.exists():
             scenario_df = pd.read_csv(selected_scenario_path)
         else:
-            st.error("Scenario file not found. Run `python main.py` to generate simulation sets.")
-            st.stop()
+            prepare_simulation_scenarios()
+            scenario_df = pd.read_csv(selected_scenario_path)
 
         # Section 1: Split Screen - 3D Digital Twin (Left) & Real-Time Intelligence (Right)
         col_twin, col_kpis = st.columns([1.15, 0.85])
 
         with col_twin:
-            st.markdown("##### 🌐 Interactive 3D Machine Spindle Digital Twin")
+            st.markdown("##### 🌐 Interactive 3D Machine Spindle Digital Twin (WebGL Three.js)")
             twin_placeholder = st.empty()
 
         with col_kpis:
@@ -230,7 +411,7 @@ def main():
         # Section 3: Autonomous Agent Work Order
         agent_box = st.empty()
 
-        # Simulation Loop
+        # Simulation Loop Execution
         total_steps = len(scenario_df)
 
         if st.session_state.sim_running and st.session_state.current_step < total_steps:
@@ -250,16 +431,15 @@ def main():
                 raw_anom_score = float(anom_score_pct[0])
                 raw_health, raw_risk = agent.compute_health_and_risk(raw_fail_prob, raw_anom_score)
 
-                # Check if failure event occurred (actual dataset breakdown or high certainty)
+                # Check if failure event occurred
                 if row.get("machine_failure", 0) == 1 or raw_fail_prob > 85.0:
                     st.session_state.latched_failure = True
 
-                # Compute EMA temporal smoothing (filters workpiece-to-workpiece cutting noise)
-                # Escalate rapidly when risk increases, decay slowly
-                alpha_p = 0.35 if raw_fail_prob > st.session_state.ema_prob else 0.15
+                # Compute EMA temporal smoothing
+                alpha_p = 0.40 if raw_fail_prob > st.session_state.ema_prob else 0.15
                 st.session_state.ema_prob = alpha_p * raw_fail_prob + (1 - alpha_p) * st.session_state.ema_prob
-                st.session_state.ema_anom = 0.25 * raw_anom_score + 0.75 * st.session_state.ema_anom
-                st.session_state.ema_health = 0.30 * raw_health + 0.70 * st.session_state.ema_health
+                st.session_state.ema_anom = 0.30 * raw_anom_score + 0.70 * st.session_state.ema_anom
+                st.session_state.ema_health = 0.35 * raw_health + 0.65 * st.session_state.ema_health
 
                 if st.session_state.latched_failure:
                     displayed_health = 8.5
@@ -293,19 +473,19 @@ def main():
                 # Update Top KPI Cards
                 risk_cls = get_risk_color_class(displayed_risk)
                 m_health.markdown(
-                    f'<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value {risk_cls}">{displayed_health:.1f}%</div><div>{"Smoothed Trend" if "EMA" in display_mode else "Instant Cycle"}</div></div>',
+                    f'<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value {risk_cls}">{displayed_health:.1f}%</div><div class="metric-sub">{"Industrial EMA" if "EMA" in display_mode else "Instantaneous"}</div></div>',
                     unsafe_allow_html=True,
                 )
                 m_prob.markdown(
-                    f'<div class="metric-card"><div class="metric-label">Failure Probability</div><div class="metric-value {risk_cls}">{displayed_prob:.1f}%</div><div>{"LightGBM (EMA)" if "EMA" in display_mode else "LightGBM Instant"}</div></div>',
+                    f'<div class="metric-card"><div class="metric-label">Failure Probability</div><div class="metric-value {risk_cls}">{displayed_prob:.1f}%</div><div class="metric-sub">LightGBM Classifier</div></div>',
                     unsafe_allow_html=True,
                 )
                 m_anom.markdown(
-                    f'<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">{displayed_anom:.1f}%</div><div>Isolation Forest</div></div>',
+                    f'<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">{displayed_anom:.1f}%</div><div class="metric-sub">Isolation Forest</div></div>',
                     unsafe_allow_html=True,
                 )
                 m_risk.markdown(
-                    f'<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value {risk_cls}">{displayed_risk}</div><div>Cycle #{row["udi"]}</div></div>',
+                    f'<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value {risk_cls}">{displayed_risk}</div><div class="metric-sub">Cycle Step #{step + 1}/{total_steps}</div></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -326,28 +506,28 @@ def main():
                 if len(hist_df) > 1:
                     chart_temp.line_chart(
                         hist_df.set_index("udi")[["process_temp_k", "air_temp_k"]],
-                        height=250,
+                        height=240,
                     )
                     chart_speed.line_chart(
                         hist_df.set_index("udi")[["rotational_speed_rpm", "torque_nm"]],
-                        height=250,
+                        height=240,
                     )
-                    # SHAP Contribution Bar Chart
-                    shap_df = pd.DataFrame(shap_factors, columns=["Feature", "Contribution"]).set_index("Feature")
-                    chart_shap.bar_chart(shap_df, height=220)
+                    shap_df = pd.DataFrame(shap_factors, columns=["Feature", "Impact"]).set_index("Feature")
+                    chart_shap.bar_chart(shap_df, height=210)
 
                 # Render Agent Work Order if Alert Triggered
                 if ticket:
-                    shap_tag = f"<p><b>TreeSHAP Contributors:</b> <code>{ticket.top_contributing_factors}</code></p>" if ticket.top_contributing_factors else ""
+                    alert_cls = "alert-box" if ticket.urgency_level.startswith("IMMEDIATE") else "alert-box-warning"
+                    shap_tag = f"<p><b>TreeSHAP Primary Drivers:</b> <code>{ticket.top_contributing_factors}</code></p>" if ticket.top_contributing_factors else ""
                     agent_box.markdown(
                         f"""
-                        <div class="alert-box">
-                            <div class="ticket-header">🚨 MAINTENANCE WORK ORDER ISSUED — [{ticket.ticket_id}]</div>
-                            <p><b>Equipment Asset:</b> {ticket.equipment_id} ({ticket.product_type}-Type) | <b>Urgency:</b> {ticket.urgency_level}</p>
+                        <div class="{alert_cls}">
+                            <div class="ticket-header">🚨 AUTONOMOUS DISPATCH TICKET ISSUED — [{ticket.ticket_id}]</div>
+                            <p><b>Target Asset:</b> {ticket.equipment_id} ({ticket.product_type}-Type) | <b>Severity Urgency:</b> <span class="badge-pill badge-critical">{ticket.urgency_level}</span></p>
                             <p><b>Diagnosed Failure Mode:</b> <span style="color:#f87171; font-weight:700;">{ticket.diagnosed_failure_mode}</span></p>
                             <p><b>Root Cause Analysis:</b> {ticket.root_cause_explanation}</p>
                             {shap_tag}
-                            <p><b>Prescriptive Action:</b> <span style="color:#fbbf24; font-weight:600;">{ticket.recommended_action}</span></p>
+                            <p><b>Prescriptive Action Plan:</b> <span style="color:#fbbf24; font-weight:600;">{ticket.recommended_action}</span></p>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -359,27 +539,26 @@ def main():
             st.session_state.sim_running = False
 
         elif len(st.session_state.history) > 0:
-            # Render Static Current State when paused
+            # Paused or Completed State Rendering
             latest = st.session_state.history[-1]
             risk_cls = get_risk_color_class(latest["risk_tier"])
             m_health.markdown(
-                f'<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value {risk_cls}">{latest["health_score"]:.1f}%</div><div>Nominal: 90-100%</div></div>',
+                f'<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value {risk_cls}">{latest["health_score"]:.1f}%</div><div class="metric-sub">Replay Paused</div></div>',
                 unsafe_allow_html=True,
             )
             m_prob.markdown(
-                f'<div class="metric-card"><div class="metric-label">Failure Probability</div><div class="metric-value {risk_cls}">{latest["failure_probability_pct"]:.1f}%</div><div>LightGBM Predict</div></div>',
+                f'<div class="metric-card"><div class="metric-label">Failure Probability</div><div class="metric-value {risk_cls}">{latest["failure_probability_pct"]:.1f}%</div><div class="metric-sub">LightGBM Predict</div></div>',
                 unsafe_allow_html=True,
             )
             m_anom.markdown(
-                f'<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">{latest["anomaly_score_pct"]:.1f}%</div><div>Isolation Forest</div></div>',
+                f'<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">{latest["anomaly_score_pct"]:.1f}%</div><div class="metric-sub">Isolation Forest</div></div>',
                 unsafe_allow_html=True,
             )
             m_risk.markdown(
-                f'<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value {risk_cls}">{latest["risk_tier"]}</div><div>Cycle #{latest["udi"]}</div></div>',
+                f'<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value {risk_cls}">{latest["risk_tier"]}</div><div class="metric-sub">Completed {len(st.session_state.history)} Steps</div></div>',
                 unsafe_allow_html=True,
             )
 
-            # Render 3D Twin in paused state
             last_mode = st.session_state.active_tickets[-1].diagnosed_failure_mode if st.session_state.active_tickets else "NORMAL"
             paused_twin_html = generate_digital_twin_html(
                 speed_rpm=float(latest.get("rotational_speed_rpm", 1500)),
@@ -396,53 +575,53 @@ def main():
             hist_df = pd.DataFrame(st.session_state.history)
             chart_temp.line_chart(
                 hist_df.set_index("udi")[["process_temp_k", "air_temp_k"]],
-                height=250,
+                height=240,
             )
             chart_speed.line_chart(
                 hist_df.set_index("udi")[["rotational_speed_rpm", "torque_nm"]],
-                height=250,
+                height=240,
             )
 
             latest_feats = pd.DataFrame([latest])[ALL_MODEL_FEATURES]
             latest_shap = failure_predictor.get_prediction_shap_contributions(latest_feats, top_k=5)[0]
-            chart_shap.bar_chart(pd.DataFrame(latest_shap, columns=["Feature", "Contribution"]).set_index("Feature"), height=220)
+            chart_shap.bar_chart(pd.DataFrame(latest_shap, columns=["Feature", "Impact"]).set_index("Feature"), height=210)
 
             if st.session_state.active_tickets:
                 last_ticket = st.session_state.active_tickets[-1]
-                shap_tag = f"<p><b>TreeSHAP Contributors:</b> <code>{last_ticket.top_contributing_factors}</code></p>" if last_ticket.top_contributing_factors else ""
+                alert_cls = "alert-box" if last_ticket.urgency_level.startswith("IMMEDIATE") else "alert-box-warning"
+                shap_tag = f"<p><b>TreeSHAP Primary Drivers:</b> <code>{last_ticket.top_contributing_factors}</code></p>" if last_ticket.top_contributing_factors else ""
                 agent_box.markdown(
                     f"""
-                    <div class="alert-box">
-                        <div class="ticket-header">🚨 MAINTENANCE WORK ORDER ISSUED — [{last_ticket.ticket_id}]</div>
-                        <p><b>Equipment Asset:</b> {last_ticket.equipment_id} ({last_ticket.product_type}-Type) | <b>Urgency:</b> {last_ticket.urgency_level}</p>
+                    <div class="{alert_cls}">
+                        <div class="ticket-header">🚨 AUTONOMOUS DISPATCH TICKET ISSUED — [{last_ticket.ticket_id}]</div>
+                        <p><b>Target Asset:</b> {last_ticket.equipment_id} ({last_ticket.product_type}-Type) | <b>Severity Urgency:</b> <span class="badge-pill badge-critical">{last_ticket.urgency_level}</span></p>
                         <p><b>Diagnosed Failure Mode:</b> <span style="color:#f87171; font-weight:700;">{last_ticket.diagnosed_failure_mode}</span></p>
                         <p><b>Root Cause Analysis:</b> {last_ticket.root_cause_explanation}</p>
                         {shap_tag}
-                        <p><b>Prescriptive Action:</b> <span style="color:#fbbf24; font-weight:600;">{last_ticket.recommended_action}</span></p>
+                        <p><b>Prescriptive Action Plan:</b> <span style="color:#fbbf24; font-weight:600;">{last_ticket.recommended_action}</span></p>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
         else:
-            # Initial prompt & Ready State
+            # Initial Ready State
             m_health.markdown(
-                '<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value status-normal">100.0%</div><div>Ready</div></div>',
+                '<div class="metric-card"><div class="metric-label">Health Index</div><div class="metric-value status-normal">100.0%</div><div class="metric-sub">Telemetry Ready</div></div>',
                 unsafe_allow_html=True,
             )
             m_prob.markdown(
-                '<div class="metric-card"><div class="metric-label">Failure Probability</div><div class="metric-value status-normal">0.0%</div><div>Ready</div></div>',
+                '<div class="metric-card"><div class="metric-label">Failure Probability</div><div class="metric-value status-normal">0.0%</div><div class="metric-sub">LightGBM Model</div></div>',
                 unsafe_allow_html=True,
             )
             m_anom.markdown(
-                '<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">0.0%</div><div>Ready</div></div>',
+                '<div class="metric-card"><div class="metric-label">Anomaly Score</div><div class="metric-value">0.0%</div><div class="metric-sub">Isolation Forest</div></div>',
                 unsafe_allow_html=True,
             )
             m_risk.markdown(
-                '<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value status-normal">NORMAL</div><div>Ready</div></div>',
+                '<div class="metric-card"><div class="metric-label">Risk Level</div><div class="metric-value status-normal">NORMAL</div><div class="metric-sub">Spindle Standby</div></div>',
                 unsafe_allow_html=True,
             )
 
-            # Initial 3D Digital Twin idling
             ready_twin_html = generate_digital_twin_html(
                 speed_rpm=1450.0,
                 temp_k=308.0,
@@ -455,21 +634,304 @@ def main():
             with twin_placeholder:
                 components.html(ready_twin_html, height=430)
 
-            st.info("👈 Press **Run Stream** in the sidebar to simulate live IoT telemetry and witness real-time failure prediction and autonomous agent response.")
+            st.info("👈 Press **▶️ Run Stream** in the sidebar to simulate live IoT telemetry and witness real-time failure prediction and autonomous agent response.")
 
+    # ==========================================
+    # TAB 2: FLEET OVERVIEW
+    # ==========================================
     with tab2:
-        st.subheader("🏭 Fleet Equipment Matrix")
+        st.markdown(
+            """
+            <div class="info-banner">
+                🏭 <b>Plant-Wide Fleet Intelligence:</b> Continuous health surveillance across <b>10,000 industrial machine tools</b> in the production facility.
+                Aggregates real-time sensor streams to track plant availability, prioritize degraded equipment, and prevent unplanned factory stoppages.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         if EQUIPMENT_STATUS_PATH.exists():
             status_df = pd.read_csv(EQUIPMENT_STATUS_PATH)
-            st.dataframe(status_df.head(100), use_container_width=True)
+            total_assets = len(status_df)
+            avg_health = float(status_df["health_score"].mean())
+            critical_count = int((status_df["risk_tier"] == "CRITICAL").sum())
+            warning_count = int((status_df["risk_tier"] == "WARNING").sum())
+            watch_count = int((status_df["risk_tier"] == "WATCH").sum())
+            normal_count = int((status_df["risk_tier"] == "NORMAL").sum())
+
+            # Top Fleet Executive KPIs
+            f_col1, f_col2, f_col3, f_col4 = st.columns(4)
+            f_col1.markdown(
+                f'<div class="metric-card"><div class="metric-label">Monitored Fleet Assets</div><div class="metric-value">{total_assets:,}</div><div class="metric-sub">100% Online Coverage</div></div>',
+                unsafe_allow_html=True,
+            )
+            f_col2.markdown(
+                f'<div class="metric-card"><div class="metric-label">Fleet Average Health</div><div class="metric-value status-watch">{avg_health:.1f}%</div><div class="metric-sub">Continuous Aggregate Index</div></div>',
+                unsafe_allow_html=True,
+            )
+            f_col3.markdown(
+                f'<div class="metric-card"><div class="metric-label">Immediate Critical Risk</div><div class="metric-value status-critical">{critical_count} Assets</div><div class="metric-sub">Require Emergency Triage</div></div>',
+                unsafe_allow_html=True,
+            )
+            f_col4.markdown(
+                f'<div class="metric-card"><div class="metric-label">Fleet Availability</div><div class="metric-value status-normal">{((normal_count + watch_count) / total_assets * 100):.1f}%</div><div class="metric-sub">Operating Nominal or Watch</div></div>',
+                unsafe_allow_html=True,
+            )
+
+            # Visual Fleet Charts (Risk Distribution & Quality Variants)
+            st.markdown("##### 📊 Fleet Health Analytics & Risk Distribution")
+            chart_f1, chart_f2 = st.columns(2)
+
+            with chart_f1:
+                st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>ASSET DISTRIBUTION BY RISK TIER</p>", unsafe_allow_html=True)
+                risk_summary = pd.DataFrame({
+                    "Risk Tier": ["NORMAL", "WATCH", "WARNING", "CRITICAL"],
+                    "Machine Count": [normal_count, watch_count, warning_count, critical_count],
+                }).set_index("Risk Tier")
+                st.bar_chart(risk_summary, height=220)
+
+            with chart_f2:
+                st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>PRODUCT QUALITY VARIANT PROFILE (L / M / H)</p>", unsafe_allow_html=True)
+                type_counts = status_df["product_type"].value_counts().rename_axis("Variant").reset_index(name="Count")
+                st.bar_chart(type_counts.set_index("Variant"), height=220)
+
+            # Interactive Machine Directory Explorer
+            st.markdown("##### 🔎 Interactive Asset Health Directory")
+            filter_c1, filter_c2, filter_c3 = st.columns([1, 1, 2])
+
+            with filter_c1:
+                tier_filter = st.selectbox(
+                    "Filter by Risk Tier",
+                    ["ALL", "CRITICAL", "WARNING", "WATCH", "NORMAL"],
+                    index=1,  # Default to CRITICAL so users immediately see machines needing attention
+                )
+            with filter_c2:
+                type_filter = st.selectbox(
+                    "Filter Machine Type",
+                    ["ALL", "L (Light)", "M (Medium)", "H (Heavy)"],
+                    index=0,
+                )
+            with filter_c3:
+                search_query = st.text_input(
+                    "Search by Product / Asset ID",
+                    placeholder="e.g. L47181, M14860...",
+                ).strip().upper()
+
+            # Filter logic
+            filtered_df = status_df.copy()
+            if tier_filter != "ALL":
+                filtered_df = filtered_df[filtered_df["risk_tier"] == tier_filter]
+            if type_filter != "ALL":
+                selected_type = type_filter[0]
+                filtered_df = filtered_df[filtered_df["product_type"] == selected_type]
+            if search_query:
+                filtered_df = filtered_df[filtered_df["product_id"].str.contains(search_query, na=False)]
+
+            st.caption(f"Showing **{len(filtered_df):,}** matching machine assets out of {total_assets:,} total.")
+
+            # Render Asset Cards Grid (Top 12 matching assets)
+            display_slice = filtered_df.head(12)
+            grid_cols = st.columns(3)
+
+            for idx, (_, m_row) in enumerate(display_slice.iterrows()):
+                col_target = grid_cols[idx % 3]
+                m_tier = m_row["risk_tier"]
+                m_cls = get_risk_color_class(m_tier)
+                m_badge_cls = f"badge-{m_tier.lower()}"
+
+                with col_target:
+                    st.markdown(
+                        f"""
+                        <div class="asset-card">
+                            <div class="asset-title">
+                                <span>{m_row['product_id']}</span>
+                                <span class="badge-pill {m_badge_cls}">{m_tier}</span>
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.78rem;">
+                                    <span style="color:#94a3b8;">Health Index:</span>
+                                    <span class="{m_cls}" style="font-weight:700;">{m_row['health_score']:.1f}%</span>
+                                </div>
+                            </div>
+                            <div class="asset-metric-row">
+                                <span>Speed: <b class="asset-metric-val">{m_row['rotational_speed_rpm']:.0f} RPM</b></span>
+                                <span>Torque: <b class="asset-metric-val">{m_row['torque_nm']:.1f} Nm</b></span>
+                            </div>
+                            <div class="asset-metric-row">
+                                <span>Process Temp: <b class="asset-metric-val">{m_row['process_temp_k']:.1f} K</b></span>
+                                <span>Tool Wear: <b class="asset-metric-val">{m_row['tool_wear_min']:.0f} min</b></span>
+                            </div>
+                            <div class="asset-metric-row" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top:6px; margin-top:8px;">
+                                <span>Fail Prob: <b class="{m_cls}">{m_row['failure_probability_pct']:.1f}%</b></span>
+                                <span>Anomaly: <b>{m_row['anomaly_score_pct']:.1f}%</b></span>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            with st.expander("🔍 View Complete Tabular Fleet Register (10,000 Records)"):
+                st.dataframe(filtered_df, use_container_width=True, height=350)
         else:
             st.info("Run `python main.py` to generate complete fleet status matrix.")
 
+    # ==========================================
+    # TAB 3: MAINTENANCE ALERTS & DISPATCH QUEUE
+    # ==========================================
     with tab3:
-        st.subheader("📋 Maintenance Alerts Log")
+        st.markdown(
+            """
+            <div class="info-banner">
+                📋 <b>Autonomous Work Order Dispatch Center:</b> Prioritized work order queue generated by the AI triage engine.
+                Each ticket includes <b>TreeSHAP root-cause attribution</b> and <b>prescriptive maintenance protocols</b> to guide field technicians.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         if ALERTS_LOG_PATH.exists():
             alerts_df = pd.read_csv(ALERTS_LOG_PATH)
-            st.dataframe(alerts_df, use_container_width=True)
+            total_alerts = len(alerts_df)
+
+            # Count categories
+            imm_count = int(alerts_df["urgency_level"].str.contains("IMMEDIATE", na=False).sum())
+            high_count = int(alerts_df["urgency_level"].str.contains("HIGH", na=False).sum())
+            med_count = int(alerts_df["urgency_level"].str.contains("MEDIUM", na=False).sum()) - imm_count
+            drift_count = int(alerts_df["diagnosed_failure_mode"].str.contains("ANOMALY", na=False).sum())
+
+            # Work Order KPI Summary
+            w_c1, w_c2, w_c3, w_c4 = st.columns(4)
+            w_c1.markdown(
+                f'<div class="metric-card"><div class="metric-label">Emergency Halts</div><div class="metric-value status-critical">{imm_count} Tickets</div><div class="metric-sub">PWF & OSF Catastrophic Risk</div></div>',
+                unsafe_allow_html=True,
+            )
+            w_c2.markdown(
+                f'<div class="metric-card"><div class="metric-label">High Priority Cooling</div><div class="metric-value status-warning">{high_count} Tickets</div><div class="metric-sub">HDF Thermal Runaway</div></div>',
+                unsafe_allow_html=True,
+            )
+            w_c3.markdown(
+                f'<div class="metric-card"><div class="metric-label">Scheduled Tool Replacements</div><div class="metric-value status-watch">{med_count} Tickets</div><div class="metric-sub">TWF Tool Wear Exceeded</div></div>',
+                unsafe_allow_html=True,
+            )
+            w_c4.markdown(
+                f'<div class="metric-card"><div class="metric-label">Total Triaged Orders</div><div class="metric-value">{total_alerts:,}</div><div class="metric-sub">Autonomous AI Coverage</div></div>',
+                unsafe_allow_html=True,
+            )
+
+            # Filter Controls
+            st.markdown("##### 🛠️ Work Order Filters & Technician Dispatch")
+            f_u1, f_u2, f_u3 = st.columns([1.2, 1.2, 1.6])
+
+            with f_u1:
+                urgency_choice = st.selectbox(
+                    "Filter by Urgency Level",
+                    ["ALL", "IMMEDIATE (Emergency Halt)", "HIGH (8-12h Response)", "MEDIUM (Tool Wear)", "LOW-MEDIUM (Routine)"],
+                    index=1,  # Default to IMMEDIATE for critical triage
+                )
+            with f_u2:
+                mode_choice = st.selectbox(
+                    "Filter by Failure Mode",
+                    ["ALL", "HDF - Heat Dissipation", "PWF - Power Failure", "OSF - Overstrain", "TWF - Tool Wear", "ANOMALY - Mechanical Drift"],
+                    index=0,
+                )
+            with f_u3:
+                wo_search = st.text_input(
+                    "Search Ticket ID or Machine ID",
+                    placeholder="e.g. TICK-00045, L47181...",
+                ).strip().upper()
+
+            # Apply Filters
+            filtered_alerts = alerts_df.copy()
+            if urgency_choice.startswith("IMMEDIATE"):
+                filtered_alerts = filtered_alerts[filtered_alerts["urgency_level"].str.contains("IMMEDIATE", na=False)]
+            elif urgency_choice.startswith("HIGH"):
+                filtered_alerts = filtered_alerts[filtered_alerts["urgency_level"].str.contains("HIGH", na=False)]
+            elif urgency_choice.startswith("MEDIUM"):
+                filtered_alerts = filtered_alerts[filtered_alerts["urgency_level"].str.contains("MEDIUM", na=False) & ~filtered_alerts["urgency_level"].str.contains("IMMEDIATE", na=False)]
+            elif urgency_choice.startswith("LOW-MEDIUM"):
+                filtered_alerts = filtered_alerts[filtered_alerts["urgency_level"].str.contains("LOW-MEDIUM", na=False)]
+
+            if mode_choice.startswith("HDF"):
+                filtered_alerts = filtered_alerts[filtered_alerts["diagnosed_failure_mode"].str.contains("HDF", na=False)]
+            elif mode_choice.startswith("PWF"):
+                filtered_alerts = filtered_alerts[filtered_alerts["diagnosed_failure_mode"].str.contains("PWF", na=False)]
+            elif mode_choice.startswith("OSF"):
+                filtered_alerts = filtered_alerts[filtered_alerts["diagnosed_failure_mode"].str.contains("OSF", na=False)]
+            elif mode_choice.startswith("TWF"):
+                filtered_alerts = filtered_alerts[filtered_alerts["diagnosed_failure_mode"].str.contains("TWF", na=False)]
+            elif mode_choice.startswith("ANOMALY"):
+                filtered_alerts = filtered_alerts[filtered_alerts["diagnosed_failure_mode"].str.contains("ANOMALY", na=False)]
+
+            if wo_search:
+                filtered_alerts = filtered_alerts[
+                    filtered_alerts["ticket_id"].str.contains(wo_search, na=False) |
+                    filtered_alerts["equipment_id"].str.contains(wo_search, na=False)
+                ]
+
+            st.caption(f"Displaying **{len(filtered_alerts):,}** actionable maintenance tickets.")
+
+            # Render Work Order Cards (Top 8 matching)
+            for _, ticket_row in filtered_alerts.head(8).iterrows():
+                t_id = ticket_row["ticket_id"]
+                t_urgency = ticket_row["urgency_level"]
+                t_mode = ticket_row["diagnosed_failure_mode"]
+                t_equip = ticket_row["equipment_id"]
+                t_type = ticket_row["product_type"]
+                t_prob = ticket_row["failure_probability_pct"]
+                t_anom = ticket_row["anomaly_score_pct"]
+                t_cause = ticket_row["root_cause_explanation"]
+                t_action = ticket_row["recommended_action"]
+                t_shap = ticket_row.get("top_contributing_factors", "")
+
+                # Urgency Card Styling
+                if "IMMEDIATE" in t_urgency:
+                    card_border = "wo-critical"
+                    urg_badge = '<span class="badge-pill badge-critical">IMMEDIATE HALT</span>'
+                elif "HIGH" in t_urgency:
+                    card_border = "wo-high"
+                    urg_badge = '<span class="badge-pill badge-high">HIGH PRIORITY</span>'
+                elif "MEDIUM" in t_urgency:
+                    card_border = "wo-medium"
+                    urg_badge = '<span class="badge-pill badge-medium">SCHEDULED SWAP</span>'
+                else:
+                    card_border = "wo-routine"
+                    urg_badge = '<span class="badge-pill badge-routine">ROUTINE WATCH</span>'
+
+                shap_markup = f"<p style='margin:4px 0;'><b>TreeSHAP Attribution:</b> <code>{t_shap}</code></p>" if pd.notna(t_shap) and str(t_shap) != "nan" else ""
+
+                card_html = f"""
+                <div class="work-order-card {card_border}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div>
+                            <span style="font-size:1.1rem; font-weight:700; color:#f1f5f9;">{t_id}</span>
+                            <span class="badge-pill badge-type" style="margin-left:8px;">{t_equip} ({t_type}-Type)</span>
+                            {urg_badge}
+                        </div>
+                        <div style="font-size:0.8rem; color:#94a3b8;">Timestamp: {ticket_row['timestamp']}</div>
+                    </div>
+                    <p style="margin:4px 0;"><b>Diagnosed Subsystem:</b> <span style="color:#f87171; font-weight:600;">{t_mode}</span></p>
+                    <p style="margin:4px 0;"><b>Root Cause:</b> {t_cause}</p>
+                    {shap_markup}
+                    <p style="margin:4px 0;"><b>Prescriptive Protocol:</b> <span style="color:#fbbf24; font-weight:600;">{t_action}</span></p>
+                    <div style="display:flex; gap:16px; margin-top:8px; font-size:0.82rem; color:#94a3b8;">
+                        <span>Failure Probability: <b style="color:#ef4444;">{t_prob:.1f}%</b></span>
+                        <span>Anomaly Index: <b style="color:#38bdf8;">{t_anom:.1f}%</b></span>
+                    </div>
+                </div>
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
+
+                # Interactive Dispatch / Acknowledge Action
+                action_c1, action_c2 = st.columns([1, 4])
+                if t_id in st.session_state.dispatched_tickets:
+                    action_c1.success("✓ Dispatched to Field Crew")
+                else:
+                    if action_c1.button(f"⚡ Dispatch Crew", key=f"dispatch_{t_id}"):
+                        st.session_state.dispatched_tickets.add(t_id)
+                        st.rerun()
+
+            with st.expander("🔍 View Complete Tabular Work Orders Register (5,280 Records)"):
+                st.dataframe(filtered_alerts, use_container_width=True, height=350)
         else:
             st.info("No persistent alerts log found. Run `python main.py` to generate alert log.")
 

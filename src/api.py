@@ -161,7 +161,8 @@ def get_fleet_status(limit: int = 50):
     if not EQUIPMENT_STATUS_PATH.exists():
         raise HTTPException(status_code=404, detail="Equipment status matrix not found.")
     df = pd.read_csv(EQUIPMENT_STATUS_PATH)
-    return df.head(limit).to_dict(orient="records")
+    clean_df = df.replace({np.nan: None})
+    return clean_df.head(limit).to_dict(orient="records")
 
 
 @app.get("/alerts/recent")
@@ -169,4 +170,5 @@ def get_recent_alerts(limit: int = 20):
     if not ALERTS_LOG_PATH.exists():
         raise HTTPException(status_code=404, detail="Alerts log not found.")
     df = pd.read_csv(ALERTS_LOG_PATH)
-    return df.head(limit).to_dict(orient="records")
+    clean_df = df.replace({np.nan: None})
+    return clean_df.head(limit).to_dict(orient="records")

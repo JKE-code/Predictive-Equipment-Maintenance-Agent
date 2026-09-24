@@ -176,3 +176,13 @@ def test_fastapi_endpoints():
         assert "failure_probability_pct" in body
         assert "top_contributing_factors" in body
         assert len(body["top_contributing_factors"]) > 0
+
+        # Test /fleet/status
+        res_fleet = client.get("/fleet/status?limit=5")
+        assert res_fleet.status_code == 200
+        assert len(res_fleet.json()) <= 5
+
+        # Test /alerts/recent
+        res_alerts = client.get("/alerts/recent?limit=5")
+        assert res_alerts.status_code == 200
+        assert len(res_alerts.json()) <= 5

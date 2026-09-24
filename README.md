@@ -1,3 +1,14 @@
+---
+title: AI-Powered Predictive Equipment Maintenance Agent
+emoji: ⚙️
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.35.0
+app_file: app.py
+pinned: false
+---
+
 # ⚙️ AI-Powered Predictive Equipment Maintenance Agent
 
 > An end-to-end, Microsoft-first predictive maintenance intelligence platform built for telemetry processing, unsupervised anomaly detection, calibrated failure forecasting, autonomous maintenance triage, and executive reporting.
